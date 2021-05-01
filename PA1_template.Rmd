@@ -1,25 +1,155 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
----
+Activity Monitoring
+======================
 
+# Introduction
 
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a Fitbit, Nike Fuelband, or Jawbone Up. These type of devices are part of the "quantified self" movement -- a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
+
+This assignment makes use of data from a personal activity monitoring device. This device collects data at 5 minute intervals through out the day. The data consists of two months of data from an anonymous individual collected during the months of October and November, 2012 and include the number of steps taken in 5 minute intervals each day.
+
+The variables included in this dataset are:
+
+- **steps:** Number of steps taking in a 5-minute interval (missing values are coded as \color{red}{\verb|NA|}NA)
+
+- **date:** The date on which the measurement was taken in YYYY-MM-DD format
+
+- **interval:** Identifier for the 5-minute interval in which measurement was taken
+
+The dataset is stored in a comma-separated-value (CSV) file and there are a total of 17,568 observations in this dataset.
+
+# Part 1
 ## Loading and preprocessing the data
 
+I uploaded the dataset to the repository as a csv file so that it can be accessed easily.
+The name of the file is ["activity.csv"](https://github.com/Jumarti96/RepData_PeerAssessment1/blob/master/activity.csv).
+
+```{r}
+data <- read.csv('https://raw.githubusercontent.com/Jumarti96/RepData_PeerAssessment1/master/activity.csv')
+data$date <- as.Date(data$date, '%Y-%m-%d')
+```
 
 
-## What is mean total number of steps taken per day?
+## Examining the data
+### Daily behavior
+
+One of the important things to look at is at some general patterns in the data. Let's see
+how is the regular daily behavior of users.
+
+```{r Histogram of total steps by day}
+library(dplyr)
+dailysteps <- with(data, tapply(steps, date, sum, na.rm=TRUE))
+
+hist(dailysteps, breaks = 10, main = "Histogram of total steps by day",
+     xlab = "Total steps in a given day", ylab = 'Frequency')
+
+print(paste("Number of NA values: ", length(data[is.na(data$steps), 1]), ", which is a ", round(mean(is.na(data$steps)), 4)*100, "% of the data.", sep = ""))
+```
+
+This shows that most days record between 10000 and 15000, and there were a few days with over 20000 steps recorded. We could have said that the distribution of the data is close to a normal distribution if there weren't a large portion of days concentrated at less than 2500 steps by day.
+
+There were also some NA values found in the data, which represented 13.11% of it, a considerable portion, so probably it is important to do something about those observations.
+
+We should look at the data of each day more closely. A look at the data for each individual day could provide some insight about those days with relatively low number of steps recorded.
+
+```{r Total number of steps by day}
+barplot(dailysteps ~ unique(data$date),
+        ylab = "Number of steps", xlab = "Date", main = "Total steps by day")
+abline(h = mean(dailysteps), col = 'red', lwd = 2)
+abline(h = median(dailysteps), col = 'blue', lwd = 2)
+legend("topleft", legend = c("Median", "Mean"),
+       col = c("blue", "red"),
+       lty = c(1, 1), lwd = c(2, 2), bty = 'n')
+
+print(paste("Mean: ", mean(dailysteps), ", Median: ", median(dailysteps), sep = ""))
+```
+
+We see the mean and median at 9354.23 and 10395 respectively, however, by looking at the graph
+we notice that there are some days for which there were no days recorded, or just too few, which
+might be an anomaly and is bringing the mean and median down.
+
+Although we do not know yet why such relatively low number of steps recorded in those days compared to others, it could be useful to know the mean and median if we ignore them.
+
+```{r Mean and median without days with few steps}
+meanwtout0 <- mean(dailysteps[-which(dailysteps < 100)])
+medianwtout0 <- median(dailysteps[-which(dailysteps < 100)])
 
 
+print(paste("Mean: ", meanwtout0, ", Median: ", medianwtout0, sep = ""))
+```
 
-## What is the average daily activity pattern?
+By looking at is this way, we get that the mean of steps recorded by day is higher than the median, and the gap between both values is smaller.
+
+```{r Data across time}
+avgsteps <- data.frame(meansteps = tapply(data$steps, data$interval, mean, na.rm = TRUE),
+                       interval = unique(data$interval), row.names = NULL)
+
+with(avgsteps, plot(interval, meansteps, type = 'l', main = 'Average steps taken everyday by 5 minute interval',
+                    xlab = "5 minute interval (each X00 represent a specific hour)", ylab = 'Average steps'))
+
+print(paste("Time of highest activity: ", avgsteps[which.max(avgsteps$meansteps), 'interval'], sep=""))
+
+```
+
+The time of the day where we can see activity the most is clearly in the morning, especially between 8 and 9. This is understandable as it is the time we can expect most people go to work, or go out to do paperwork.
+
+Remember the notable portion of NA values found before. now that we know how the activity in a regular day looks like, it would be interesting to see how the data changes if we use these insights to deal with the NA values. Let's assume that in those days with mising values activity was the same as usual.
+
+One way can be by replacing those missing values by the mean for the respective time intervals.
+
+```{r Imputing NAs}
+nas <- which(is.na(data$steps) == TRUE)
+filleddata <- data
+
+for (i in nas) {
+        filleddata[i, 1] <- avgsteps[avgsteps$interval == filleddata[i, 'interval'], 'meansteps']
+}
+
+print(paste("Number of NA values: ", length(data[is.na(data$steps), 1]), ", which is a ", round(mean(is.na(data$steps)), 4)*100, "% of the data.", sep = ""))
+
+```
+
+Now we don't have missing values, so a new histogram with the updated data could give us a more realistic view.
+
+```{r New histogram}
+newdailysteps <- with(filleddata, tapply(steps, date, sum, na.rm=TRUE))
+
+hist(newdailysteps, breaks = 10, main = "Histogram of total steps by day",
+     xlab = "Total steps in a given day", ylab = 'Frequency')
+
+```
+
+Filling the missing data made some changes to the distribution of the data. Now the distribution looks more like a normal distribution, with a high concentration of data around the mean, and there are fewer days with 0 steps. 
 
 
+```{r Weekend and weekday patterns}
+Sys.setlocale("LC_TIME", "English") # In case your environment language is in a language different from English, as is my case
+filleddata$wday <- weekdays(filleddata$date)
+weekdaylist <- c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+weekday <- filleddata[filleddata$wday %in% weekdaylist, ]
+weekend <- filleddata[!filleddata$wday %in% weekdaylist, ]
 
-## Imputing missing values
+Weekday <- data.frame(meansteps = tapply(weekday$steps, weekday$interval, mean),
+                       interval = unique(weekday$interval), row.names = NULL)
+Weekend <- data.frame(meansteps = tapply(weekend$steps, weekend$interval, mean),
+                         interval = unique(weekend$interval), row.names = NULL)
 
+par(mfrow = c(2, 1), oma = c(4, 4, 2, 2))
+with(Weekday, plot(interval, meansteps, type = 'l', axes = FALSE))
+axis(2L)
+box()
+with(Weekend, plot(interval, meansteps, type = 'l', axes = FALSE))
+axis(1L)
+axis(2L)
+box()
 
+mtext("Average steps taken on weekdays by 5 minute interval", outer = TRUE, side = 1, line = -20.5, cex = 1.3)
+mtext("5 minute interval (each X00 represent a specific hour", side = 1, outer = TRUE, line = 2.5)
+mtext("Weekdays", side = 2, outer = TRUE, line = 2.5, at = 0.75)
+mtext("Weekends", side = 2, outer = TRUE, line = 2.5, at = 0.25)
 
-## Are there differences in activity patterns between weekdays and weekends?
+print(paste("Time of highest activity on weekdays: ", Weekday[which.max(Weekday$meansteps), 'interval'], sep=""))
+print(paste("Time of highest activity on weekends: ", Weekend[which.max(Weekend$meansteps), 'interval'], sep=""))
+
+```
+
+Finally, wee see the difference in activity between weekdays and weekends. In both cases the peak of the movement occurs in the morning, but on weekends it happens at 9:15 while on weekdays it happens at 8:35 (probably because people wake up later on weekends, LOL). Also, we note an important difference in the activity: on weekdays activity is relatively low during the rest of the day, while on weekends activity remains high for the entire day, which is not surprising but still interesting to see reflected on the data.
