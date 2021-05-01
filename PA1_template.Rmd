@@ -133,23 +133,24 @@ Weekday <- data.frame(meansteps = tapply(weekday$steps, weekday$interval, mean),
 Weekend <- data.frame(meansteps = tapply(weekend$steps, weekend$interval, mean),
                          interval = unique(weekend$interval), row.names = NULL)
 
-par(mfrow = c(2, 1), oma = c(4, 4, 2, 2))
-with(Weekday, plot(interval, meansteps, type = 'l', axes = FALSE))
+par(mfrow = c(2, 1), mar=c(0, 3.1, 2, 2.1), oma = c(2, 2, 2, 2))
+with(Weekday, plot(interval, meansteps, type = 'l', axes = FALSE, ann = FALSE))
 axis(2L)
 box()
-with(Weekend, plot(interval, meansteps, type = 'l', axes = FALSE))
+
+par(mar = c(2, 3.1, 0, 2.1))
+with(Weekend, plot(interval, meansteps, type = 'l', axes = FALSE, ann = FALSE))
 axis(1L)
 axis(2L)
 box()
 
 mtext("Average steps taken on weekdays by 5 minute interval", outer = TRUE, side = 1, line = -20.5, cex = 1.3)
-mtext("5 minute interval (each X00 represent a specific hour", side = 1, outer = TRUE, line = 2.5)
-mtext("Weekdays", side = 2, outer = TRUE, line = 2.5, at = 0.75)
-mtext("Weekends", side = 2, outer = TRUE, line = 2.5, at = 0.25)
-
-print(paste("Time of highest activity on weekdays: ", Weekday[which.max(Weekday$meansteps), 'interval'], sep=""))
-print(paste("Time of highest activity on weekends: ", Weekend[which.max(Weekend$meansteps), 'interval'], sep=""))
+mtext("5 minute interval (each X00 represent a specific hour", side = 1, outer = TRUE, line = 0.2)
+mtext("Weekdays", side = 2, outer = TRUE, line = 0.25, at = 0.75)
+mtext("Weekends", side = 2, outer = TRUE, line = 0.25, at = 0.25)
 
 ```
 
 Finally, wee see the difference in activity between weekdays and weekends. In both cases the peak of the movement occurs in the morning, but on weekends it happens at 9:15 while on weekdays it happens at 8:35 (probably because people wake up later on weekends, LOL). Also, we note an important difference in the activity: on weekdays activity is relatively low during the rest of the day, while on weekends activity remains high for the entire day, which is not surprising but still interesting to see reflected on the data.
+
+This was an interesting work. I hoped you learned as much as I did.
